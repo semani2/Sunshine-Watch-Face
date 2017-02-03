@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -29,11 +30,22 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
 import java.util.Calendar;
@@ -85,6 +97,12 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
     }
 
     private class Engine extends CanvasWatchFaceService.Engine {
+        private static final String EMPTY_STRING = "";
+
+        private static final String WEATHER_DATA_PATH = "/sunshine/weather";
+
+        private final String TAG = WeatherWatchFace.class.getSimpleName();
+
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
@@ -107,6 +125,28 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
          */
         boolean mLowBitAmbient;
 
+        private GoogleApiClient mGoogleApiClient;
+
+        private String minTemp = EMPTY_STRING;
+        private String maxTemp = EMPTY_STRING;
+        private Bitmap weatherBitmapAsset = null;
+
+        DataApi.DataListener dataListener = new DataApi.DataListener() {
+            @Override
+            public void onDataChanged(DataEventBuffer dataEventBuffer) {
+                for(DataEvent dataEvent: dataEventBuffer) {
+                    if(dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                        DataItem dataItem = dataEvent.getDataItem();
+
+                        // Check if path of data item matches weather data path
+                        if(dataItem.getUri().getPath().equalsIgnoreCase(WEATHER_DATA_PATH)) {
+                            // Extract out weather information
+                        }
+                    }
+                }
+            }
+        };
+
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
@@ -116,7 +156,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .build());
-            Resources resources = WeatherWatchFace.this.getResources();
+            final Resources resources = WeatherWatchFace.this.getResources();
             mYOffset = resources.getDimension(R.dimen.digital_y_offset);
 
             mBackgroundPaint = new Paint();
@@ -126,6 +166,33 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
             mCalendar = Calendar.getInstance();
+
+            mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext()).
+                    addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                        @Override
+                        public void onConnected(@Nullable Bundle bundle) {
+                            Log.d(TAG, "Connected to Google Api Client");
+
+                            //Add data listener
+                            Wearable.DataApi.addListener(mGoogleApiClient, dataListener);
+                        }
+
+                        @Override
+                        public void onConnectionSuspended(int i) {
+                            Log.d(TAG, "Connection to Google Api client suspended");
+
+                        }
+                    })
+                    .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                        @Override
+                        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+                            Log.d(TAG, "Connection to Google Api client failed " + connectionResult);
+                        }
+                    })
+                    .addApi(Wearable.API)
+                    .build();
+
+            mGoogleApiClient.connect();
         }
 
         @Override
@@ -230,12 +297,19 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
+            int xCoordinateCenter = bounds.centerX();
+            int yCoordinateCenter = bounds.centerY();
+
+            int xCoordinateClock = xCoordinateCenter - (int) convertDpToPixel(50);
+            int yCoordinateClock = yCoordinateCenter - (int) convertDpToPixel(40);
+
+
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
             String text = String.format("%d:%02d", mCalendar.get(Calendar.HOUR_OF_DAY),
                     mCalendar.get(Calendar.MINUTE));
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            canvas.drawText(text, xCoordinateClock, yCoordinateClock, mTextPaint);
         }
 
         /**
@@ -269,5 +343,10 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
         }
+    }
+
+    private float convertDpToPixel(float dp) {
+        Resources r = getResources();
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, r.getDisplayMetrics());
     }
 }
