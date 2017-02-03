@@ -25,6 +25,7 @@ import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.utilities.NetworkUtils;
 import com.example.android.sunshine.utilities.NotificationUtils;
 import com.example.android.sunshine.utilities.OpenWeatherJsonUtils;
+import com.example.android.sunshine.utilities.SunshineWatchFaceUtils;
 
 import java.net.URL;
 
@@ -105,6 +106,9 @@ public class SunshineSyncTask {
                 }
 
             /* If the code reaches this point, we have successfully performed our sync */
+
+                // Send information to Wear
+                SunshineWatchFaceUtils.updateWearInfo(context);
 
             }
 

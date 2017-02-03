@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package sai.developement.sunshinewatchface;
+package com.example.android.sunshine;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -40,7 +40,6 @@ import android.util.TypedValue;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
-import com.example.android.sunshine.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.wearable.Asset;
@@ -65,7 +64,7 @@ import java.util.concurrent.TimeUnit;
  * Digital watch face with seconds. In ambient mode, the seconds aren't displayed. On devices with
  * low-bit ambient mode, the text is drawn without anti-aliasing in ambient mode.
  */
-public class WeatherWatchFace extends CanvasWatchFaceService {
+public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
 
@@ -86,15 +85,15 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
     }
 
     private static class EngineHandler extends Handler {
-        private final WeakReference<WeatherWatchFace.Engine> mWeakReference;
+        private final WeakReference<SunshineWeatherWatchFace.Engine> mWeakReference;
 
-        public EngineHandler(WeatherWatchFace.Engine reference) {
+        public EngineHandler(SunshineWeatherWatchFace.Engine reference) {
             mWeakReference = new WeakReference<>(reference);
         }
 
         @Override
         public void handleMessage(Message msg) {
-            WeatherWatchFace.Engine engine = mWeakReference.get();
+            SunshineWeatherWatchFace.Engine engine = mWeakReference.get();
             if (engine != null) {
                 switch (msg.what) {
                     case MSG_UPDATE_TIME:
@@ -115,7 +114,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
         private static final String WEATHER_ICON_KEY = "sai.development.sunshineweatherface.weather_icon_key";
 
 
-        private final String TAG = WeatherWatchFace.class.getSimpleName();
+        private final String TAG = SunshineWeatherWatchFace.class.getSimpleName();
 
         final Handler mUpdateTimeHandler = new EngineHandler(this);
 
@@ -167,7 +166,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
 
                             minTemp = dataMap.getString(MIN_TEMP_KEY);
                             maxTemp = dataMap.getString(MAX_TEMP_KEY);
-                            weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
+                            //weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
                         }
                     }
                 }
@@ -178,12 +177,12 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
 
-            setWatchFaceStyle(new WatchFaceStyle.Builder(WeatherWatchFace.this)
+            setWatchFaceStyle(new WatchFaceStyle.Builder(SunshineWeatherWatchFace.this)
                     .setCardPeekMode(WatchFaceStyle.PEEK_MODE_VARIABLE)
                     .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .build());
-            final Resources resources = WeatherWatchFace.this.getResources();
+            final Resources resources = SunshineWeatherWatchFace.this.getResources();
             mYOffset = resources.getDimension(R.dimen.digital_y_offset);
 
             mBackgroundPaint = new Paint();
@@ -298,7 +297,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             }
             mRegisteredTimeZoneReceiver = true;
             IntentFilter filter = new IntentFilter(Intent.ACTION_TIMEZONE_CHANGED);
-            WeatherWatchFace.this.registerReceiver(mTimeZoneReceiver, filter);
+            SunshineWeatherWatchFace.this.registerReceiver(mTimeZoneReceiver, filter);
         }
 
         private void unregisterReceiver() {
@@ -306,7 +305,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
                 return;
             }
             mRegisteredTimeZoneReceiver = false;
-            WeatherWatchFace.this.unregisterReceiver(mTimeZoneReceiver);
+            SunshineWeatherWatchFace.this.unregisterReceiver(mTimeZoneReceiver);
         }
 
         @Override
@@ -314,7 +313,7 @@ public class WeatherWatchFace extends CanvasWatchFaceService {
             super.onApplyWindowInsets(insets);
 
             // Load resources that have alternate values for round watches.
-            Resources resources = WeatherWatchFace.this.getResources();
+            Resources resources = SunshineWeatherWatchFace.this.getResources();
             boolean isRound = insets.isRound();
 
             mXOffset = resources.getDimension(isRound
