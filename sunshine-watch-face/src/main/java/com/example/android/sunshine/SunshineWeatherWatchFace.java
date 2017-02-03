@@ -28,6 +28,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -42,6 +43,7 @@ import android.view.WindowInsets;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
@@ -49,6 +51,8 @@ import com.google.android.gms.wearable.DataEventBuffer;
 import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 
 import java.io.InputStream;
@@ -104,7 +108,10 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements
+            GoogleApiClient.ConnectionCallbacks,
+            GoogleApiClient.OnConnectionFailedListener,
+            DataApi.DataListener {
         private static final String EMPTY_STRING = "";
 
         private static final String WEATHER_DATA_PATH = "/sunshine/weather";
@@ -151,28 +158,6 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         private Date currentDate;
         private SimpleDateFormat simpleDateFormat;
 
-        DataApi.DataListener dataListener = new DataApi.DataListener() {
-            @Override
-            public void onDataChanged(DataEventBuffer dataEventBuffer) {
-                Log.d(TAG, "Data Listener OnDataChanged");
-                for(DataEvent dataEvent: dataEventBuffer) {
-                    if(dataEvent.getType() == DataEvent.TYPE_CHANGED) {
-                        DataItem dataItem = dataEvent.getDataItem();
-
-                        // Check if path of data item matches weather data path
-                        if(dataItem.getUri().getPath().equalsIgnoreCase(WEATHER_DATA_PATH)) {
-                            // Extract out weather information
-                            DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
-
-                            minTemp = dataMap.getString(MIN_TEMP_KEY);
-                            maxTemp = dataMap.getString(MAX_TEMP_KEY);
-                            //weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
-                        }
-                    }
-                }
-            }
-        };
-
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
@@ -203,31 +188,61 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             currentDate = new Date();
 
             mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext()).
-                    addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
-                        @Override
-                        public void onConnected(@Nullable Bundle bundle) {
-                            Log.d(TAG, "Connected to Google Api Client");
-
-                            //Add data listener
-                            Wearable.DataApi.addListener(mGoogleApiClient, dataListener);
-                        }
-
-                        @Override
-                        public void onConnectionSuspended(int i) {
-                            Log.d(TAG, "Connection to Google Api client suspended");
-
-                        }
-                    })
-                    .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
-                        @Override
-                        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-                            Log.d(TAG, "Connection to Google Api client failed " + connectionResult);
-                        }
-                    })
+                    addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
                     .addApi(Wearable.API)
                     .build();
 
             mGoogleApiClient.connect();
+        }
+
+        /* Google API Client callbacks */
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            Log.d(TAG, "Connected to Google Api Client");
+
+            //Add data listener
+            Wearable.DataApi.addListener(mGoogleApiClient, this);
+
+            //Send Sync weather message to device
+            new SyncWeatherTask(mGoogleApiClient).execute();
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+            Log.d(TAG, "Connection to Google Api client suspended");
+
+        }
+
+        @Override
+        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+            Log.d(TAG, "Connection to Google Api client failed " + connectionResult);
+        }
+
+
+        /**
+         * Data Api Listener callback
+         * @param dataEventBuffer
+         */
+        @Override
+        public void onDataChanged(DataEventBuffer dataEventBuffer) {
+            Log.d(TAG, "Data Listener OnDataChanged");
+            for(DataEvent dataEvent: dataEventBuffer) {
+                if(dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                    DataItem dataItem = dataEvent.getDataItem();
+
+                    // Check if path of data item matches weather data path
+                    if(dataItem.getUri().getPath().equalsIgnoreCase(WEATHER_DATA_PATH)) {
+                        // Extract out weather information
+                        DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
+
+                        minTemp = dataMap.getString(MIN_TEMP_KEY);
+                        maxTemp = dataMap.getString(MAX_TEMP_KEY);
+                        //weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
+                    }
+                }
+            }
         }
 
         /**
@@ -261,6 +276,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         @Override
         public void onDestroy() {
             mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
+            mGoogleApiClient.disconnect();
             super.onDestroy();
         }
 
@@ -370,10 +386,10 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             int xCoordinateCenter = bounds.centerX();
             int yCoordinateCenter = bounds.centerY();
 
-            int xCoordinateClock = xCoordinateCenter - (int) convertDpToPixel(50);
+            int xCoordinateClock = xCoordinateCenter - (int) convertDpToPixel(45);
             int yCoordinateClock = yCoordinateCenter - (int) convertDpToPixel(40);
 
-            int xCoordinateDate = xCoordinateCenter - (int) convertDpToPixel(55);
+            int xCoordinateDate = xCoordinateCenter - (int) convertDpToPixel(50);
             int yCoordinateDate = yCoordinateCenter - (int) convertDpToPixel(20);
 
             int xCoordinateWeather = xCoordinateCenter;
@@ -436,6 +452,56 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
     private float convertDpToPixel(float dp) {
         Resources r = getResources();
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, r.getDisplayMetrics());
+    }
+
+    private class SyncWeatherTask extends AsyncTask<Void, Void, Void> {
+
+        private final String TAG = SyncWeatherTask.class.getSimpleName();
+        private final GoogleApiClient mGoogleApiClient;
+
+        private static final String SYNC_WEATHER_PATH = "/sync-weather";
+
+        public SyncWeatherTask(GoogleApiClient googleApiClient) {
+            this.mGoogleApiClient = googleApiClient;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            String nodeId = getNodeId();
+            if(nodeId != null) {
+                sendMessageToDevice(nodeId);
+            }
+            return null;
+        }
+
+        private String getNodeId() {
+            NodeApi.GetConnectedNodesResult nodes =
+                    Wearable.NodeApi.getConnectedNodes(mGoogleApiClient).await();
+
+            if(nodes != null && nodes.getNodes().size() > 0) {
+                return nodes.getNodes().get(0).getId();
+            }
+            return null;
+        }
+
+        private void sendMessageToDevice(String nodeId) {
+            Wearable.MessageApi.sendMessage(mGoogleApiClient,
+                    nodeId,
+                    SYNC_WEATHER_PATH,
+                    new byte[0])
+                    .setResultCallback(new ResultCallback<MessageApi.SendMessageResult>() {
+                        @Override
+                        public void onResult(@NonNull MessageApi.SendMessageResult sendMessageResult) {
+                            if (!sendMessageResult.getStatus().isSuccess()) {
+                                Log.e(TAG, "Failed to send message with status code: "
+                                        + sendMessageResult.getStatus().getStatusCode());
+                            }
+                            else {
+                                Log.d(TAG, "Message to device sent successfully");
+                            }
+                        }
+                    });
+        }
     }
 
 }
