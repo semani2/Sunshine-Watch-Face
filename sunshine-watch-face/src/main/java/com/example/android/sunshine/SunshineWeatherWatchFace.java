@@ -119,6 +119,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         private static final String MIN_TEMP_KEY = "sai.development.sunshineweatherface.min_temp_key";
         private static final String MAX_TEMP_KEY = "sai.development.sunshineweatherface.max_temp_key";
         private static final String WEATHER_ICON_KEY = "sai.development.sunshineweatherface.weather_icon_key";
+        private static final String WEATHER_COND_KEY = "sai.development.sunshineweaterface.weather_cond_key";
 
 
         private final String TAG = SunshineWeatherWatchFace.class.getSimpleName();
@@ -153,6 +154,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
 
         private String minTemp = EMPTY_STRING;
         private String maxTemp = EMPTY_STRING;
+        private String weatherCondition = EMPTY_STRING;
         private Bitmap weatherBitmapAsset = null;
 
         private Date currentDate;
@@ -239,6 +241,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
 
                         minTemp = dataMap.getString(MIN_TEMP_KEY);
                         maxTemp = dataMap.getString(MAX_TEMP_KEY);
+                        weatherCondition = dataMap.getString(WEATHER_COND_KEY);
                         //weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
                     }
                 }
@@ -393,7 +396,10 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             int yCoordinateDate = yCoordinateCenter - (int) convertDpToPixel(20);
 
             int xCoordinateWeather = xCoordinateCenter;
-            int yCoordinateWeather = yCoordinateCenter + (int) convertDpToPixel(20);
+            int yCoordinateWeather = yCoordinateCenter + (int) convertDpToPixel(30);
+
+            int xCoordinateWeatherCondition =  xCoordinateCenter;
+            int yCoordinateWeatherCondition = yCoordinateCenter + (int) convertDpToPixel(50);
 
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
@@ -410,8 +416,17 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             canvas.drawText(date, xCoordinateDate, yCoordinateDate, mDateTextPaint);
 
             if(!minTemp.equalsIgnoreCase("")) {
+
+                canvas.drawLine(xCoordinateCenter - (int) convertDpToPixel(25),
+                        yCoordinateCenter,
+                        xCoordinateCenter + (int) convertDpToPixel(25),
+                        yCoordinateCenter,
+                        mDateTextPaint);
+
                 String weather = String.format(Locale.ENGLISH, "%s  %s", maxTemp, minTemp);
                 canvas.drawText(weather, xCoordinateWeather, yCoordinateWeather, mDateTextPaint);
+
+                canvas.drawText(weatherCondition, xCoordinateWeatherCondition, yCoordinateWeatherCondition, mDateTextPaint);
             }
 
         }

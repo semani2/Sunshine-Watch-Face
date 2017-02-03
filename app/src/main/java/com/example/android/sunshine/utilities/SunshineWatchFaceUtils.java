@@ -10,6 +10,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.bumptech.glide.Glide;
 import com.example.android.sunshine.data.WeatherContract;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -53,6 +54,7 @@ public class SunshineWatchFaceUtils {
     private static final String MIN_TEMP_KEY = "sai.development.sunshineweatherface.min_temp_key";
     private static final String MAX_TEMP_KEY = "sai.development.sunshineweatherface.max_temp_key";
     private static final String WEATHER_ICON_KEY = "sai.development.sunshineweatherface.weather_icon_key";
+    private static final String WEATHER_COND_KEY = "sai.development.sunshineweaterface.weather_cond_key";
 
 
     public static void updateWearInfo(Context context) {
@@ -86,14 +88,17 @@ public class SunshineWatchFaceUtils {
             int largeArtResourceId = SunshineWeatherUtils
                     .getLargeArtResourceIdForWeatherCondition(weatherId);
 
-            /*int largeIconSize = resources.getDimensionPixelSize(R.dimen.notification_large_icon_default);
+            String weatherCondition = SunshineWeatherUtils
+                    .getStringForWeatherCondition(context, weatherId);
+
+            int largeIconSize = resources.getDimensionPixelSize(com.example.android.sunshine.R.dimen.notification_large_icon_default);
 
             Bitmap largeIcon = Glide.with(context)
-                    .load(artUrl)
+                    .load(largeArtResourceId)
                     .asBitmap()
-                    .error(artResourceId)
+                    .error(largeArtResourceId)
                     .fitCenter()
-                    .into(largeIconSize, largeIconSize).get();*/
+                    .into(largeIconSize, largeIconSize).get();
 
             String maxTemp = SunshineWeatherUtils.formatTemperature(context, high);
 
@@ -126,6 +131,7 @@ public class SunshineWatchFaceUtils {
             putDataMapRequest.getDataMap().putString(MIN_TEMP_KEY, minTemp);
             putDataMapRequest.getDataMap().putString(MAX_TEMP_KEY, maxTemp);
             putDataMapRequest.getDataMap().putLong("TIME", System.currentTimeMillis());
+            putDataMapRequest.getDataMap().putString(WEATHER_COND_KEY, weatherCondition);
             //putDataMapRequest.getDataMap().putAsset(WEATHER_ICON_KEY, createAssetFromBitmap(largeIcon));
 
             PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
