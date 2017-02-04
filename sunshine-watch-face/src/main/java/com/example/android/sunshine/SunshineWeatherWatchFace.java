@@ -44,7 +44,6 @@ import android.view.WindowInsets;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
@@ -55,7 +54,6 @@ import com.google.android.gms.wearable.MessageApi;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 
-import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -118,8 +116,8 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
 
         private static final String MIN_TEMP_KEY = "sai.development.sunshineweatherface.min_temp_key";
         private static final String MAX_TEMP_KEY = "sai.development.sunshineweatherface.max_temp_key";
-        private static final String WEATHER_ICON_KEY = "sai.development.sunshineweatherface.weather_icon_key";
         private static final String WEATHER_COND_KEY = "sai.development.sunshineweaterface.weather_cond_key";
+        private static final String WEATHER_ID_KEY = "sai.development.sunshineweaterface.weather_id_key";
 
 
         private final String TAG = SunshineWeatherWatchFace.class.getSimpleName();
@@ -131,6 +129,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         Paint mBackgroundPaint;
         Paint mClockTextPaint;
         Paint mDateTextPaint;
+        Paint mWeatherConditionTextPaint;
 
         boolean mAmbient;
         Calendar mCalendar;
@@ -156,6 +155,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         private String maxTemp = EMPTY_STRING;
         private String weatherCondition = EMPTY_STRING;
         private Bitmap weatherBitmapAsset = null;
+        private int weatherId = -1;
 
         private Date currentDate;
         private SimpleDateFormat simpleDateFormat;
@@ -180,6 +180,9 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
 
             mDateTextPaint = new Paint();
             mDateTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+
+            mWeatherConditionTextPaint = new Paint();
+            mWeatherConditionTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
             mCalendar = Calendar.getInstance();
             mCalendar.setTimeZone(TimeZone.getDefault());
@@ -242,39 +245,13 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
                         minTemp = dataMap.getString(MIN_TEMP_KEY);
                         maxTemp = dataMap.getString(MAX_TEMP_KEY);
                         weatherCondition = dataMap.getString(WEATHER_COND_KEY);
-                        //weatherBitmapAsset = loadBitmapFromAsset(dataMap.getAsset(WEATHER_ICON_KEY));
+                        weatherId = dataMap.getInt(WEATHER_ID_KEY);
+                        weatherBitmapAsset = BitmapFactory.decodeResource(SunshineWeatherWatchFace.this.getResources(),
+                                ImageUtility.getIconResourceForWeatherCondition(weatherId));
                     }
                 }
             }
         }
-
-        /**
-         * Source : https://developer.android.com/training/wearables/data-layer/assets.html
-         * @param asset
-         * @return
-         */
-        public Bitmap loadBitmapFromAsset(Asset asset) {
-            if (asset == null) {
-                throw new IllegalArgumentException("Asset must be non-null");
-            }
-            ConnectionResult result =
-                    mGoogleApiClient.blockingConnect(5000, TimeUnit.MILLISECONDS);
-            if (!result.isSuccess()) {
-                return null;
-            }
-            // convert asset into a file descriptor and block until it's ready
-            InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
-                    mGoogleApiClient, asset).await().getInputStream();
-            mGoogleApiClient.disconnect();
-
-            if (assetInputStream == null) {
-                Log.w(TAG, "Requested an unknown Asset.");
-                return null;
-            }
-            // decode the stream into a bitmap
-            return BitmapFactory.decodeStream(assetInputStream);
-        }
-
 
         @Override
         public void onDestroy() {
@@ -344,8 +321,11 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             float dateTextSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_date_size_round : R.dimen.digital_text_date_size);
 
+            float weatherCondTextSize = resources.getDimension(R.dimen.weather_cond_text_size);
+
             mClockTextPaint.setTextSize(clockTextSize);
             mDateTextPaint.setTextSize(dateTextSize);
+            mWeatherConditionTextPaint.setTextSize(weatherCondTextSize);
         }
 
         @Override
@@ -404,7 +384,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
-            String text = String.format("%d:%02d", mCalendar.get(Calendar.HOUR_OF_DAY),
+            String text = String.format(Locale.ENGLISH, "%d:%02d", mCalendar.get(Calendar.HOUR_OF_DAY),
                     mCalendar.get(Calendar.MINUTE));
 
             String date = simpleDateFormat.format(currentDate);
@@ -426,7 +406,18 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
                 String weather = String.format(Locale.ENGLISH, "%s  %s", maxTemp, minTemp);
                 canvas.drawText(weather, xCoordinateWeather, yCoordinateWeather, mDateTextPaint);
 
-                canvas.drawText(weatherCondition, xCoordinateWeatherCondition, yCoordinateWeatherCondition, mDateTextPaint);
+                canvas.drawText(weatherCondition, xCoordinateWeatherCondition, yCoordinateWeatherCondition, mWeatherConditionTextPaint);
+            }
+
+            if(!mAmbient && weatherBitmapAsset != null) {
+                canvas.drawBitmap(weatherBitmapAsset,
+                        null,
+                        new Rect(xCoordinateCenter - (int) convertDpToPixel(70),
+                                yCoordinateCenter + (int) convertDpToPixel(10),
+                                xCoordinateCenter - (int) convertDpToPixel(20),
+                                yCoordinateCenter + (int) convertDpToPixel(60)),
+                        null
+                        );
             }
 
         }

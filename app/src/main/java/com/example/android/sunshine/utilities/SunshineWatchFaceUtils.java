@@ -1,27 +1,21 @@
 package com.example.android.sunshine.utilities;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.database.Cursor;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.bumptech.glide.Glide;
 import com.example.android.sunshine.data.WeatherContract;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
-
-import java.io.ByteArrayOutputStream;
 
 /**
  * Created by sai on 2/2/17.
@@ -55,6 +49,7 @@ public class SunshineWatchFaceUtils {
     private static final String MAX_TEMP_KEY = "sai.development.sunshineweatherface.max_temp_key";
     private static final String WEATHER_ICON_KEY = "sai.development.sunshineweatherface.weather_icon_key";
     private static final String WEATHER_COND_KEY = "sai.development.sunshineweaterface.weather_cond_key";
+    private static final String WEATHER_ID_KEY = "sai.development.sunshineweaterface.weather_id_key";
 
 
     public static void updateWearInfo(Context context) {
@@ -83,22 +78,8 @@ public class SunshineWatchFaceUtils {
             int weatherId = todayWeatherCursor.getInt(INDEX_WEATHER_ID);
             double high = todayWeatherCursor.getDouble(INDEX_MAX_TEMP);
             double low = todayWeatherCursor.getDouble(INDEX_MIN_TEMP);
-
-            Resources resources = context.getResources();
-            int largeArtResourceId = SunshineWeatherUtils
-                    .getLargeArtResourceIdForWeatherCondition(weatherId);
-
             String weatherCondition = SunshineWeatherUtils
                     .getStringForWeatherCondition(context, weatherId);
-
-            int largeIconSize = resources.getDimensionPixelSize(com.example.android.sunshine.R.dimen.notification_large_icon_default);
-
-            Bitmap largeIcon = Glide.with(context)
-                    .load(largeArtResourceId)
-                    .asBitmap()
-                    .error(largeArtResourceId)
-                    .fitCenter()
-                    .into(largeIconSize, largeIconSize).get();
 
             String maxTemp = SunshineWeatherUtils.formatTemperature(context, high);
 
@@ -132,7 +113,7 @@ public class SunshineWatchFaceUtils {
             putDataMapRequest.getDataMap().putString(MAX_TEMP_KEY, maxTemp);
             putDataMapRequest.getDataMap().putLong("TIME", System.currentTimeMillis());
             putDataMapRequest.getDataMap().putString(WEATHER_COND_KEY, weatherCondition);
-            //putDataMapRequest.getDataMap().putAsset(WEATHER_ICON_KEY, createAssetFromBitmap(largeIcon));
+            putDataMapRequest.getDataMap().putInt(WEATHER_ID_KEY, weatherId);
 
             PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
 
@@ -152,16 +133,5 @@ public class SunshineWatchFaceUtils {
         /* Always close your cursor when you're done with it to avoid wasting resources. */
         todayWeatherCursor.close();
 
-    }
-
-    /**
-     * Source : https://developer.android.com/training/wearables/data-layer/assets.html
-     * @param bitmap
-     * @return
-     */
-    private static Asset createAssetFromBitmap(Bitmap bitmap) {
-        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
-        return Asset.createFromBytes(byteStream.toByteArray());
     }
 }

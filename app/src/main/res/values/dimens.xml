@@ -44,4 +44,6 @@
     <dimen name="list_item_date_left_margin">16dp</dimen>
     <dimen name="list_item_date_start_margin">@dimen/list_item_date_left_margin</dimen>
 
+    <dimen name="wear_icon_dimen">50dp</dimen>
+
 </resources>
