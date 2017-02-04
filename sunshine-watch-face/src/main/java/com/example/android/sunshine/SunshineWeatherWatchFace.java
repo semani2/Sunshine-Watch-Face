@@ -130,6 +130,7 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
         Paint mClockTextPaint;
         Paint mDateTextPaint;
         Paint mWeatherConditionTextPaint;
+        Paint mMaxTempTextPaint;
 
         boolean mAmbient;
         Calendar mCalendar;
@@ -176,13 +177,16 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint.setColor(resources.getColor(R.color.colorSunshine));
 
             mClockTextPaint = new Paint();
-            mClockTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mClockTextPaint = createTextPaint(resources.getColor(R.color.digital_text), false);
 
             mDateTextPaint = new Paint();
-            mDateTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mDateTextPaint = createTextPaint(resources.getColor(R.color.digital_text), false);
+
+            mMaxTempTextPaint = new Paint();
+            mMaxTempTextPaint = createTextPaint(resources.getColor(R.color.digital_text), true);
 
             mWeatherConditionTextPaint = new Paint();
-            mWeatherConditionTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mWeatherConditionTextPaint = createTextPaint(resources.getColor(R.color.digital_text), false);
 
             mCalendar = Calendar.getInstance();
             mCalendar.setTimeZone(TimeZone.getDefault());
@@ -260,10 +264,10 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             super.onDestroy();
         }
 
-        private Paint createTextPaint(int textColor) {
+        private Paint createTextPaint(int textColor, boolean isBold) {
             Paint paint = new Paint();
             paint.setColor(textColor);
-            paint.setTypeface(NORMAL_TYPEFACE);
+            paint.setTypeface(isBold ? Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD) : NORMAL_TYPEFACE);
             paint.setAntiAlias(true);
             return paint;
         }
@@ -323,9 +327,12 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
 
             float weatherCondTextSize = resources.getDimension(R.dimen.weather_cond_text_size);
 
+            float maxTempTextSize = resources.getDimension(R.dimen.max_temp_size);
+
             mClockTextPaint.setTextSize(clockTextSize);
             mDateTextPaint.setTextSize(dateTextSize);
             mWeatherConditionTextPaint.setTextSize(weatherCondTextSize);
+            mMaxTempTextPaint.setTextSize(maxTempTextSize);
         }
 
         @Override
@@ -347,6 +354,9 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
                     mClockTextPaint.setAntiAlias(!inAmbientMode);
+                    mDateTextPaint.setAntiAlias(!inAmbientMode);
+                    mWeatherConditionTextPaint.setAntiAlias(!inAmbientMode);
+                    mMaxTempTextPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -375,10 +385,13 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
             int xCoordinateDate = xCoordinateCenter - (int) convertDpToPixel(50);
             int yCoordinateDate = yCoordinateCenter - (int) convertDpToPixel(20);
 
-            int xCoordinateWeather = xCoordinateCenter;
-            int yCoordinateWeather = yCoordinateCenter + (int) convertDpToPixel(30);
+            int xCoordinateMaxTemp = !isInAmbientMode() ? xCoordinateCenter : xCoordinateCenter - (int) convertDpToPixel(40);
+            int yCoordinateMaxTemp = yCoordinateCenter + (int) convertDpToPixel(30);
 
-            int xCoordinateWeatherCondition =  xCoordinateCenter;
+            int xCoordinateMinTemp = !isInAmbientMode() ? xCoordinateCenter + (int) convertDpToPixel(50) : xCoordinateCenter + (int) convertDpToPixel(10);
+            int yCoordinateMinTemp = yCoordinateCenter + (int) convertDpToPixel(30);
+
+            int xCoordinateWeatherCondition =  !isInAmbientMode() ? xCoordinateCenter : xCoordinateCenter - (int) convertDpToPixel(40);
             int yCoordinateWeatherCondition = yCoordinateCenter + (int) convertDpToPixel(50);
 
             long now = System.currentTimeMillis();
@@ -403,8 +416,9 @@ public class SunshineWeatherWatchFace extends CanvasWatchFaceService {
                         yCoordinateCenter,
                         mDateTextPaint);
 
-                String weather = String.format(Locale.ENGLISH, "%s  %s", maxTemp, minTemp);
-                canvas.drawText(weather, xCoordinateWeather, yCoordinateWeather, mDateTextPaint);
+                canvas.drawText(maxTemp, xCoordinateMaxTemp, yCoordinateMaxTemp, mMaxTempTextPaint);
+
+                canvas.drawText(minTemp, xCoordinateMinTemp, yCoordinateMinTemp, mDateTextPaint);
 
                 canvas.drawText(weatherCondition, xCoordinateWeatherCondition, yCoordinateWeatherCondition, mWeatherConditionTextPaint);
             }
